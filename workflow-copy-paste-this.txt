@@ -1,0 +1,74 @@
+name: Build Minecraft 1.0 for iPhone
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 180
+    env:
+      # Amethyst-iOS commit the patch was written against
+      AMETHYST_COMMIT: 9212a1894865e7ac0466029e25ddb0d895544c76
+    steps:
+      - name: Get this project
+        uses: actions/checkout@v4
+
+      - name: Show the build machine
+        run: |
+          sw_vers
+          uname -m
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-path
+
+      - name: Install build tools
+        run: brew install make cmake ldid wget
+
+      - name: Install JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '8'
+
+      - name: Get Amethyst-iOS (pinned commit)
+        run: |
+          git clone --recursive https://github.com/AngelAuraMC/Amethyst-iOS src
+          cd src
+          git checkout -q "$AMETHYST_COMMIT"
+          git submodule update --init --recursive
+
+      - name: Apply the Minecraft 1.0 changes
+        run: |
+          cd src
+          patch -p1 < ../minecraft10_boot.patch
+          cp ../BundledGame.h ../BundledGame.m Natives/
+
+      - name: Build the app
+        run: |
+          cd src
+          set -o pipefail
+          gmake -j"$(sysctl -n hw.ncpu)" package PLATFORM=2 BOOTJDK="$JAVA_HOME/bin" 2>&1 | tee ../build.log
+
+      - name: Collect the IPA
+        run: |
+          mkdir -p out
+          cp src/artifacts/org.angelauramc.amethyst-*-ios.ipa out/Minecraft_1_0_ios.ipa
+          ls -lah out
+
+      - name: Upload the IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Minecraft_1_0_ios
+          path: out/Minecraft_1_0_ios.ipa
+          retention-days: 30
+
+      - name: Upload the build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 30

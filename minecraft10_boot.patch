@@ -1,0 +1,43 @@
+--- a/Natives/ios_uikit_bridge.m	2026-08-10 13:18:06.000000000 +0000
++++ b/Natives/ios_uikit_bridge.m	2026-09-20 16:07:43.543754157 +0000
+@@ -6,6 +6,7 @@
+ #import "LauncherSplitViewController.h"
+ #import "PLLogOutputView.h"
+ #import "SurfaceViewController.h"
++#import "BundledGame.h"
+ 
+ #include <objc/runtime.h>
+ #include "ios_uikit_bridge.h"
+@@ -154,6 +155,11 @@
+ }
+ 
+ void launchInitialViewController(UIWindow *window) {
++    // Standalone build: skip the launcher UI and boot straight into the bundled game.
++    if (BundledGame_isPresent()) {
++        window.rootViewController = [[BundledGameBootViewController alloc] init];
++        return;
++    }
+     window.rootViewController = [[LauncherSplitViewController alloc] initWithStyle:UISplitViewControllerStyleDoubleColumn];
+ #if 0
+     if (getPrefBool(@"internal.internal_launch_on_boot")) {
+--- a/Natives/CMakeLists.txt	2026-08-10 13:18:06.000000000 +0000
++++ b/Natives/CMakeLists.txt	2026-09-20 16:07:43.543896759 +0000
+@@ -138,6 +138,7 @@
+ 
+   AccountListViewController.m
+   AppDelegate.m
++  BundledGame.m
+   CustomControlsViewController.m
+   CustomControlsViewController+UndoManager.m
+   DownloadProgressViewController.m
+--- a/Natives/Info.plist	2026-08-10 13:18:06.000000000 +0000
++++ b/Natives/Info.plist	2026-09-20 16:07:43.543985330 +0000
+@@ -9,7 +9,7 @@
+ 	<key>CFBundleDevelopmentRegion</key>
+ 	<string>en</string>
+ 	<key>CFBundleDisplayName</key>
+-	<string>Amethyst</string>
++	<string>Minecraft 1.0</string>
+ 	<key>CFBundleExecutable</key>
+ 	<string>AngelAuraAmethyst</string>
+ 	<key>CFBundleIcons</key>
